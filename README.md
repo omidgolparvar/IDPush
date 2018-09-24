@@ -60,13 +60,13 @@
 </p>
 
 ```swift
-pod 'IDOneSignal'
+pod 'IDPush'
 ```
 
 <p dir='rtl'>بعد توی کدتون، برای استفاده، بصورت زیر <code>import</code> کنین:</p>
 
 ```swift
-import IDOneSignal
+import IDPush
 ```
 
 <br>
@@ -75,7 +75,7 @@ import IDOneSignal
 برای پیکربندی، باید اول برین توی وبسایت ما، و بعد از ثبت‌نام و این کارا، یه پروژه تعریف کنین و اطلاعات مورد نیازش رو بهش بدین. بعد سامانه یه <code>projectID</code> بهتون میده. حالا توی نرم‌افزار آی‌او‌اس، کتابخانه رو با استفاده از این <code>projectID</code> پیکربندی می‌کنین.</p>
 
 ```swift
-IDOneSignal.Setup(projectID: "abcdefghijklmnopqrstuvwxyz")
+IDPush.Setup(projectID: "abcdefghijklmnopqrstuvwxyz")
 ```
 
 <br>
@@ -85,16 +85,16 @@ IDOneSignal.Setup(projectID: "abcdefghijklmnopqrstuvwxyz")
 </p>
 
 ```swift
-IDOneSignal.Perform(action: IDOneSignalAction, then callback: (IDOneSignalActionError?, Any?) -> Void)
+IDPush.Perform(action: IDPushAction, then callback: (IDPushActionError?, Any?) -> Void)
 ```
 
 <ul dir='rtl'>
-  <li>پارامتر <code>action</code> از نوع <code>IDOneSignalAction</code> هست، که در واقع یکی از گزینه‌های این  <code>enum</code> هست:
+  <li>پارامتر <code>action</code> از نوع <code>IDPushAction</code> هست، که در واقع یکی از گزینه‌های این  <code>enum</code> هست:
   </li>
 </ul>
 
 ```swift
-public enum IDOneSignalAction {
+public enum IDPushAction {
     case addDevice(token: String)
     case subscribe
     case unsubscribe
@@ -103,12 +103,12 @@ public enum IDOneSignalAction {
 }
 ```
 <ul dir='rtl'>
-  <li>پارامتر <code>callback</code> هم از نوع <code dir='ltr'>(IDOneSignalActionError?, Any?) -> Void</code> هست که در واقع یه <code>Closure</code> هست که نتیجه اون عمل رو برمیگردونه. خودش دوتا پارامتر داره. اولی خطای احتمالی رو مشخص می‌کنه، و دومی داده دریافتی احتمالی رو. اون خطای احتمالی، یکی از خطاهای زیر خواهد بود:
+  <li>پارامتر <code>callback</code> هم از نوع <code dir='ltr'>(IDPushActionError?, Any?) -> Void</code> هست که در واقع یه <code>Closure</code> هست که نتیجه اون عمل رو برمیگردونه. خودش دوتا پارامتر داره. اولی خطای احتمالی رو مشخص می‌کنه، و دومی داده دریافتی احتمالی رو. اون خطای احتمالی، یکی از خطاهای زیر خواهد بود:
   </li>
 </ul>
 
 ```swift
-public enum IDOneSignalActionError: Error, CustomStringConvertible {
+public enum IDPushActionError: Error, CustomStringConvertible {
     case missingDeviceToken
     case missingPlayerID
     case isNotConfigured
@@ -126,7 +126,7 @@ public enum IDOneSignalActionError: Error, CustomStringConvertible {
 </p>
 
 ```swift
-let playerID = IDOneSignal.GetPlayerID()
+let playerID = IDPush.GetPlayerID()
 ```
 
 <p dir='rtl'>
@@ -149,13 +149,13 @@ let playerID = IDOneSignal.GetPlayerID()
 <p dir='rtl'>اول از همه کتابخانه رو <code>import</code> کنین:</p>
 
 ```swift
-import IDOneSignal
+import IDPush
 ```
 
 <p dir='rtl'>بعد توی پروژه‌تون با استفاده از کد زیر، کتابخانه رو با <code>projectID</code> دریافتی‌تون، پیکربندی می‌کنین.</p>
 
 ```swift
-IDOneSignal.Setup(projectID: "abcd...")
+IDPush.Setup(projectID: "abcd...")
 ```
 
 <br>
@@ -195,19 +195,19 @@ func application(_ application: UIApplication, didRegisterForRemoteNotifications
     }
     print("APNs Token:", tokenString)
 
-    IDOneSignal.Perform(action: .addDevice(token: tokenString)) { (error, data) in
+    IDPush.Perform(action: .addDevice(token: tokenString)) { (error, data) in
         if let error = error {
-            print("IDOneSignal.AddDevice: Error: \(error.description)")
+            print("IDPush.AddDevice: Error: \(error.description)")
             return
         }
 
-        guard let playerID = IDOneSignal.GetPlayerID() else { return }
-        print("IDOneSignal.AddDevice: Done: \(playerID)")
+        guard let playerID = IDPush.GetPlayerID() else { return }
+        print("IDPush.AddDevice: Done: \(playerID)")
     }
 }
 ```
 
-<p dir='rtl'>توی این قطعه کد، شناسه که توسط این متد در اختیار ما قرار گرفت، با استفاده از <code>IDOneSignal</code> و اکشن <code dir='ltr'>addDevice(token: String)</code> این شناسه رو ثبت می‌کنیم. اگه توی <code>Closure</code> ادامه‌اش، خطایی رخ نداده باشه، <code>playerID</code> وان‌سیگنالی این دستگاه از طریق اون <code dir='ltr'>guard let ... else { ... }</code> قابل بررسی و دریافت خواهد بود.</p>
+<p dir='rtl'>توی این قطعه کد، شناسه که توسط این متد در اختیار ما قرار گرفت، با استفاده از <code>IDPush</code> و اکشن <code dir='ltr'>addDevice(token: String)</code> این شناسه رو ثبت می‌کنیم. اگه توی <code>Closure</code> ادامه‌اش، خطایی رخ نداده باشه، <code>playerID</code> وان‌سیگنالی این دستگاه از طریق اون <code dir='ltr'>guard let ... else { ... }</code> قابل بررسی و دریافت خواهد بود.</p>
 
 <br>
 
