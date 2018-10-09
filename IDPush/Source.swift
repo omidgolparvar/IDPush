@@ -113,17 +113,12 @@ public class IDPush {
 	}
 	
 	private enum IDPushConfigureError: Error, CustomStringConvertible {
-		case multiple([IDPushConfigureError])
-		
 		case missingProjectID
-		case missingPlayerID
 		
 		var description: String {
 			let _0 = "🆔 ⚠️ - Configuration Error: "
 			switch self {
-			case .multiple(let errors)	: return _0 + "\n" + errors.map({ $0.description.replacingOccurrences(of: _0, with: " - ") }).joined(separator: "") + "\n"
 			case .missingProjectID		: return _0 + "ProjectID is missing." + "\n"
-			case .missingPlayerID		: return _0 + "PlayerID is missing." + "\n"
 			}
 		}
 		
