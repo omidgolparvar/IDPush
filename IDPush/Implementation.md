@@ -92,6 +92,25 @@
 
 <br>
 
+<h3 dir='rtl'>خطاهای احتمالی در زمان انجام گزینه‌ها</h3>
+<ul dir='rtl'>
+  <li><b>نوع دسترسی</b>: <code>public</code></li>
+  <li><b>نام</b>: <code>IDPushActionError</code></li>
+  <li><b>نوع داده</b>: <code dir='ltr'>enum</code></li>
+  <li><b>توضیحات</b>: این <code>enum</code> از نوع <code>Error</code> نیز ارث‌بری می‌کند. درصورت بروز این خطاها، پیام‌های متناظرشون با استفاده از پرینت به برنامه‌نویس نمایش داده میشن.</li>
+  <li><b>زیر مقدارها</b>: <br>
+    <ul dir='rtl'>
+      <li>گزینه <code>missingDeviceToken</code>: اگر در زمان ثبت دستگاه، شناسه دستگاه خالی وارد شده باشد.</li>
+      <li>گزینه <code>missingPlayerID</code>: اگر زمان انجام گزینه‌ها، به <code>playerID</code> نیاز باشد، ولی در دسترس نباشد.</li>
+      <li>گزینه <code>isNotConfigured</code>: اگر قبل از انجام گزینه‌ها، آی‌دی‌پوش را پیکربندی نکرده باشیم.</li>
+      <li>گزینه <code>invalidResponse</code>: اگر داده دریافتی از سرور معتبر نباشد.</li>
+      <li>گزینه <code dir='ltr'>custom(message: String)</code>: این گزینه، یک پارامتر همراه از نوع متنی دارد که برای خطاهایی مورد استفاده قرار می‌گیره که جزء موارد قبلی نباشن؛ مثل خطاهایی که از سمت سرور میان.</li>
+    </ul>
+  </li>
+</ul>
+
+<br>
+
 <h3 dir='rtl'>گزینه‌های انجام‌پذیر در آی‌دی‌پوش</h3>
 <ul dir='rtl'>
   <li><b>نوع دسترسی</b>: <code>public</code></li>
@@ -163,7 +182,7 @@
             <p dir='rtl'>بعد از پارامترهای اشتراکی، پارامترهای دیگه‌ای هم هستن که براساس نوع گزینه مورد استفاده تعیین و تنظیم میشن:<br>
             <ul>
               <li>برای گزینه <code dir='ltr'>.addDevice(let token)</code> :<br>
-                <pre dir='ltr'>parameter["identifier"] = token
+                <pre style=" text-align: left;">parameter["identifier"] = token
 parameter["notification_types"] = 1
 var isForTest: Bool = true
 #if DEBUG
@@ -174,20 +193,20 @@ var isForTest: Bool = true
 parameter["test_type"] = isForTest ? 1 : 2</pre>
               </li>
               <li>برای گزینه <code dir='ltr'>.subscribe</code> :<br>
-                <pre dir='ltr'>parameter["player_id"] = IDPush.PlayerID!
+                <pre style=" text-align: left;">parameter["player_id"] = IDPush.PlayerID!
 parameter["notification_types"] = 1</pre>
               </li>
               <li>برای گزینه <code dir='ltr'>.unsubscribe</code> :<br>
-                <pre dir='ltr'>parameter["player_id"] = IDPush.PlayerID!
+                <pre style=" text-align: left;">parameter["player_id"] = IDPush.PlayerID!
 parameter["notification_types"] = -2</pre>
               </li>
               <li>برای گزینه <code dir='ltr'>.setTags(let tags)</code> :<br>
-                <pre dir='ltr'>parameter["player_id"] = IDPush.PlayerID!
+                <pre style=" text-align: left;">parameter["player_id"] = IDPush.PlayerID!
 parameter["notification_types"] = 1
 parameter["tags"] = JSON(tags).rawString(.utf8, options: []) ?? ""</pre>
               </li>
               <li>برای گزینه <code dir='ltr'>.editDevice(let parameters)</code> :<br>
-                <pre dir='ltr'>parameter["player_id"] = IDPush.PlayerID!
+                <pre style=" text-align: left;">parameter["player_id"] = IDPush.PlayerID!
 parameters.forEach({ parameter[$0.key] = $0.value })</pre>
               </li>
             </ul>
@@ -394,6 +413,76 @@ parameters.forEach({ parameter[$0.key] = $0.value })</pre>
         <li>همین مقدار ورودی رو برای استفاده‌های بعدی، توی <code>UserDefaults</code> هم ذخیره می‌کنیم.
         <br>
         کلیدی که برای ذخیره توی <code>UserDefaults</code> استفاده می‌کنیم، مقدار ذخیره‌شده توی <code>kUserDefaults_PreviousPlayerID</code> هست.
+        </li>
+      </ul>
+    </p>
+  </li>
+</ul>
+
+
+<br>
+<h3 dir='rtl'>انجام گزینه‌ها و بررسی نتیجه انجام یا <code>Perform</code></h3>
+<ul dir='rtl'>
+  <li>
+    <b>نوع دسترسی</b>
+    <ul dir='rtl'>
+      <li><code>public static</code>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <b>ورودی‌ها</b>
+    <ul dir='rtl'>
+      <li><code>action</code>
+        <ul>
+          <li><b>نوع داده</b>: <code>IDPushAction</code> که درواقع یه <code>enum</code> هست.</li>
+          <li><b>توضیحات</b>: این پارامتر مشخص‌کننده اینه که برنامه‌نویس می‌خواد چیکار کنه؛ مثلا می‌خواد یه دستگاه ثبت کنه.</li>
+        </ul>
+      </li>
+      <li><code>callback</code>
+        <ul>
+          <li><b>نوع داده</b>: <code dir='ltr'>(IDPushActionError?, Any?) -> Void</code></li>
+          <li><b>توضیحات</b>: این پارامتر در واقع <code>closure</code>ی هست که بعد از انجام گزینه ورودی، فراخوانی میشه و پارامترهای همراهش هم براساس نتیجه انجام اون عمل، مقداردهی میشن. پارامتر اولش خطای احتمالی رو مشخص می‌کنه که نوعش توی قسمت «نوع داده‌ها» توضیح داده شده و همچنین می‌تونه مقدار <code>nil</code> داشته باشه و اگه مقدارش <code>nil</code> باشه، به این معنیه که انجام گزینه ورودی، با موفقیت انجام شده. اگه هم توی روند انجام گزینه ورودی خطایی پیش بیاد، همین پارامتر مشخص‌کننده اون خطا خواهد بود.<br>پارامتر دوم هم از نوع <code>Any?</code> در نظر گرفته شده، و خروجی سرور رو منتقل می‌کنه. </li>
+        </ul>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <b>خروجی</b>
+    <ul dir='rtl'>
+      <li><b>ندارد</b>
+      </li>
+    </ul>
+  </li>
+  <li>
+    <b>توضیحات</b>
+    <p dir='rtl'>
+      روند انجام گزینه‌ها بصورت زیر هست:
+      <ul dir='rtl'>
+        <li>اول از همه بررسی می‌کنیم که آی‌دی‌پوش پیکربندی شده باشه. این کار با بررسی <code>IsConfigured</code> انجام میشه. 
+          <ul>
+            <li>اگه مقدارش <code>false</code> بود:
+              <ul>
+                <li>پیام متناظر با خطای <code>IDPushActionError.isNotConfigured</code> رو پرینت می‌کنیم.</li>
+                <li>اون <code>closure</code> رو بهمراه پارامترهای <code>IDPushActionError.isNotConfigured</code> و <code>nil</code> فراخوانی‌اش می‌کنیم.</li>
+                <li>از متد خارج می‌شیم تا روند ادامه پیدا نکنه.</li>
+              </ul>
+          </ul>
+        </li>
+        <li>قدم بعدی اینه که خود اون گزینه ورودی برای انجام رو اعتبارسنجی کنیم. این کار با استفاده از متد <code dir='ltr'>validateBeforePerform()</code> انجام میشه. این عمل با استفاده از <code dir='ltr'>do { } catch { }</code> انجام میشه.<br> اگه خطایی رخ بده:
+          <ul>
+            <li>پیام متناظر با خطای دریافت‌شده رو پرینت می‌کنیم.</li>
+            <li>اون <code>closure</code> رو بهمراه پارامترهای خطای دریافتی و <code>nil</code> فراخوانی‌اش می‌کنیم.</li>
+            <li>از متد خارج می‌شیم تا روند ادامه پیدا نکنه.</li>
+          </ul>
+        </li>
+        <li>قدم بعدی، ارسال درخواست متناظر با گزینه ورودی هست:
+          <ul>
+            <li>متد مورد نظر برای همه درخواست‌ها <code>POST</code> هست.</li>
+            <li>آدرس نهایی درخواست رو از طریق متد <code dir='ltr'>getURL()</code> بدست میاریم.</li>
+            <li>پارامترهایی که قرار هست توی <code>HTTP-Body</code> بفرستیم رو با استفاده از متد <code dir='ltr'>getParameters()</code> بدست میاریم.</li>
+            <li>پاسخ دریافتی از سرور با فرمت <code>JSON</code> خواهد بود.</li>
+          </ul>
         </li>
       </ul>
     </p>
