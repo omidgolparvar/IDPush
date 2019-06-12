@@ -1,14 +1,6 @@
 //
-//  Source.swift
-//  IDPush
-//
-//  Created by Omid Golparvar on 9/24/18.
-//  Copyright © 2018 Omid Golparvar. All rights reserved.
-//
 
 import Foundation
-import Alamofire
-import SwiftyJSON
 import UIDeviceComplete
 
 public class IDPush {
@@ -40,58 +32,95 @@ public class IDPush {
 	
 	public static func Perform(action: IDPushAction, then callback: @escaping (IDPushActionError?, Any?) -> Void) {
 		guard IsConfigured else {
-			let error = IDPushActionError.isNotConfigured
-			print(error.description)
-			callback(error, nil)
+			let actionError = IDPushActionError.isNotConfigured
+			PrintError(actionError, title: "Configuration")
+			callback(actionError, nil)
 			return
 		}
 		
 		do {
 			try action.validateBeforePerform()
 		} catch {
-			let e = error as! IDPushActionError
-			print(e.description)
-			callback(e, nil)
+			let actionError = error as! IDPushActionError
+			PrintError(actionError, title: "Validation Error")
+			callback(actionError, nil)
 			return
 		}
 		
 		let url = action.getURL()
 		let parameters = action.getParameters()
 		
-		Alamofire
-			.request(url, method: .post, parameters: parameters, encoding: URLEncoding.httpBody, headers: nil)
-			.responseJSON { response in
+		var request = URLRequest(url: url)
+		request.setValue("application/x-www-form-urlencoded", forHTTPHeaderField: "Content-Type")
+		request.httpMethod = "POST"
+		request.httpBody = parameters.percentEscaped().data(using: .utf8)
+		
+		let task = URLSession.shared.dataTask(with: request) { data, response, error in
+			
+			guard error == nil else {
+				let actionError = IDPushActionError.custom(message: error!.localizedDescription)
+				PrintError(actionError, title: "Request Failed")
+				callback(actionError, nil)
+				return
+			}
+			
+			guard let data = data, let response = response as? HTTPURLResponse else {
+				let actionError = IDPushActionError.custom(message: "Data or Response as NOT available")
+				PrintError(actionError, title: "Data or Response")
+				callback(actionError, nil)
+				return
+			}
+			
+			guard (200 ... 299) ~= response.statusCode else {
+				let actionError = IDPushActionError.invalidResponse
+				PrintError(actionError, title: "Invalid Response", extraMessage: "StatusCode = \(response.statusCode)")
+				callback(actionError, nil)
+				return
+			}
+			
+			do {
+				let jsonObject = try JSONSerialization.jsonObject(with: data, options: [])
+				//print("JSON Object: \(String(describing: jsonObject))")
 				
-				switch response.result {
-				case .success(let data):
-					let jsonObject = JSON(data)
-					
-					if	let httpStatusCode = response.response?.statusCode, httpStatusCode == 200,
-						let statusValue = jsonObject["status"].int, statusValue == 1 {
-						
-						switch action {
-						case .addDevice(_):
-							if let playerID = jsonObject["player_id"].string {
-								IDPush.StorePlayerID(playerID)
-								callback(nil, data)
-							} else {
-								callback(.invalidResponse, data)
-							}
-						default:
-							callback(nil, data)
-						}
-					} else {
-						callback(.invalidResponse, data)
-					}
-					
-				case .failure(let error):
-					print("🆔 ⚠️ - Alamofire request failed: ")
-					print(error.localizedDescription)
-					print()
-					
-					callback(.custom(message: error.localizedDescription), nil)
+				guard let jsonDictionary = jsonObject as? [String: Any] else {
+					let actionError = IDPushActionError.invalidResponse
+					PrintError(actionError, title: "Invalid Response", extraMessage: "Casting JSON to Dictionary: Failed")
+					callback(actionError, nil)
+					return
 				}
+				//print("JSON Dictionary: \(String(describing: jsonDictionary))")
+				
+				guard let status = jsonDictionary["status"] as? Int, status == 1 else {
+					let actionError = IDPushActionError.invalidResponse
+					PrintError(actionError, title: "Invalid Response")
+					callback(actionError, nil)
+					return
+				}
+				
+				switch action {
+				case .addDevice:
+					if let playerID = jsonDictionary["player_id"] as? String {
+						IDPush.StorePlayerID(playerID)
+						callback(nil, data)
+					} else {
+						let actionError = IDPushActionError.invalidResponse
+						PrintError(actionError, title: "Invalid Response")
+						callback(actionError, nil)
+					}
+				default:
+					callback(nil, data)
+				}
+				
+			} catch let error {
+				let actionError = IDPushActionError.custom(message: error.localizedDescription)
+				PrintError(actionError, title: "Invalid Response", extraMessage: "JSON Serialization: Failed")
+				callback(actionError, nil)
+				print(error.localizedDescription)
+			}
+			
 		}
+		
+		task.resume()
 		
 	}
 	
@@ -107,18 +136,16 @@ public class IDPush {
 	
 	private static func StorePlayerID(_ playerID: String) {
 		PlayerID = playerID
-		let standardUserDefaults = UserDefaults.standard
-		standardUserDefaults.set(playerID, forKey: kUserDefaults_PreviousPlayerID)
-		standardUserDefaults.synchronize()
+		UserDefaults.standard.set(playerID, forKey: kUserDefaults_PreviousPlayerID)
 	}
 	
 	private enum IDPushConfigureError: Error, CustomStringConvertible {
 		case missingProjectID
 		
 		var description: String {
-			let _0 = "🆔 ⚠️ - Configuration Error: "
+			let errorPrefix = "🆔 ⚠️ - Configuration Error: "
 			switch self {
-			case .missingProjectID		: return _0 + "ProjectID is missing." + "\n"
+			case .missingProjectID		: return errorPrefix + "ProjectID is missing." + "\n"
 			}
 		}
 		
@@ -146,24 +173,40 @@ public class IDPush {
 				
 				var isForTest: Bool = true
 				#if DEBUG
-					isForTest = true
+				isForTest = true
 				#else
-					isForTest = false
+				isForTest = false
 				#endif
 				
 				parameter["test_type"]			= isForTest ? 1 : 2
 			case .subscribe:
-				parameter["player_id"]			= IDPush.PlayerID!
+				guard let playerID = IDPush.PlayerID else {
+					IDPush.PrintError(.missingPlayerID, title: "Action Parameters")
+					return [:]
+				}
+				parameter["player_id"]			= playerID
 				parameter["notification_types"]	= 1
 			case .unsubscribe:
-				parameter["player_id"]			= IDPush.PlayerID!
+				guard let playerID = IDPush.PlayerID else {
+					IDPush.PrintError(.missingPlayerID, title: "Action Parameters")
+					return [:]
+				}
+				parameter["player_id"]			= playerID
 				parameter["notification_types"]	= -2
 			case .setTags(let tags):
-				parameter["player_id"]			= IDPush.PlayerID!
+				guard let playerID = IDPush.PlayerID else {
+					IDPush.PrintError(.missingPlayerID, title: "Action Parameters")
+					return [:]
+				}
+				parameter["player_id"]			= playerID
 				parameter["notification_types"]	= 1
-				parameter["tags"]				= JSON(tags).rawString(.utf8, options: []) ?? ""
+				parameter["tags"]				= tags.asJSONString
 			case .editDevice(let parameters):
-				parameter["player_id"]			= IDPush.PlayerID!
+				guard let playerID = IDPush.PlayerID else {
+					IDPush.PrintError(.missingPlayerID, title: "Action Parameters")
+					return [:]
+				}
+				parameter["player_id"]			= playerID
 				parameters.forEach({ parameter[$0.key] = $0.value })
 			}
 			
@@ -199,21 +242,59 @@ public class IDPush {
 		case custom(message: String)
 		
 		public var description: String {
-			let _0 = "🆔 ⚠️ - Action Error: "
 			switch self {
-			case .missingDeviceToken	: return _0 + "APNs token is empty." + "\n"
-			case .missingPlayerID		: return _0 + "PlayerID is missing." + "\n"
-			case .isNotConfigured		: return _0 + "Framework is NOT configured. Call IDPush.Setup(...)." + "\n"
-			case .invalidResponse		: return _0 + "Server response is NOT valid." + "\n"
-			case .custom(let message)	: return _0 + "Custom error message: \(message)." + "\n"
+			case .missingDeviceToken	: return "APNs token is empty."
+			case .missingPlayerID		: return "PlayerID is missing."
+			case .isNotConfigured		: return "Framework is NOT configured. Call IDPush.Setup(...)."
+			case .invalidResponse		: return "Server response is NOT valid."
+			case .custom(let message)	: return "Custom error message: \(message)."
 			}
 		}
 	}
 }
 
+extension IDPush {
+	
+	private static func PrintError(_ error: IDPushActionError, title: String, extraMessage: String? = nil) {
+		let extraMessage = extraMessage == nil ? "" : " (\(extraMessage!))"
+		print("🆔 ⚠️ - \(title): ")
+		print(error.description + extraMessage)
+		print()
+	}
+	
+}
+
 extension String {
-	
 	fileprivate var isTrimmedAndEmpty: Bool { return self.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-	
+}
+
+extension Dictionary {
+	fileprivate func percentEscaped() -> String {
+		return map { (key, value) in
+			let escapedKey = "\(key)".addingPercentEncoding(withAllowedCharacters: .urlQueryValueAllowed) ?? ""
+			let escapedValue = "\(value)".addingPercentEncoding(withAllowedCharacters: .urlQueryValueAllowed) ?? ""
+			return escapedKey + "=" + escapedValue
+			}
+			.joined(separator: "&")
+	}
+}
+
+extension Dictionary where Key == String , Value == Any {
+	fileprivate var asJSONString: String {
+		let jsonData = try! JSONSerialization.data(withJSONObject: self, options: [])
+		let jsonString = String(data: jsonData, encoding: .utf8)!
+		return jsonString
+	}
+}
+
+extension CharacterSet {
+	fileprivate static let urlQueryValueAllowed: CharacterSet = {
+		let generalDelimitersToEncode = ":#[]@" // does not include "?" or "/" due to RFC 3986 - Section 3.4
+		let subDelimitersToEncode = "!$&'()*+,;="
+		
+		var allowed = CharacterSet.urlQueryAllowed
+		allowed.remove(charactersIn: "\(generalDelimitersToEncode)\(subDelimitersToEncode)")
+		return allowed
+	}()
 }
 
